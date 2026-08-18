@@ -1,0 +1,197 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: radial-gradient(circle at 20% 10%, #eaf3ff 0%, #effff6 40%, #f6f8fb 100%);
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.page-bg {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.app-shell {
+  width: 100%;
+  max-width: 56rem;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.card {
+  background: #ffffff;
+  border: 1px solid #dde5ef;
+  border-radius: 1rem;
+  padding: 1.25rem;
+  box-shadow: 0 10px 30px rgba(7, 24, 52, 0.08);
+}
+
+.muted {
+  color: #49607a;
+}
+
+.qr-wrap {
+  margin: 1rem 0;
+  display: flex;
+  justify-content: center;
+}
+
+.id-label {
+  margin: 0;
+  font-size: 0.875rem;
+  color: #4c6480;
+}
+
+.id-value {
+  margin-top: 0.35rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  word-break: break-word;
+}
+
+.scanner-box {
+  margin: 1rem 0;
+}
+
+.scan-result {
+  margin-bottom: 1rem;
+}
+
+.coach-meta {
+  margin-top: 0.75rem;
+}
+
+.status-text {
+  margin-top: 0.75rem;
+  color: #194165;
+}
+
+.card-space {
+  margin-top: 1rem;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 1rem;
+}
+
+.patient-list {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.patient-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  align-items: center;
+  background: #f5f9ff;
+  border: 1px solid #dfeaff;
+  border-radius: 0.75rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.patient-list code {
+  font-size: 0.8rem;
+  background: #ebf3ff;
+  padding: 0.25rem 0.5rem;
+  border-radius: 0.5rem;
+  word-break: break-word;
+}
+
+.auth-card {
+  width: min(100%, 28rem);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #dfeaff;
+  border-radius: 1rem;
+  box-shadow: 0 12px 32px rgba(22, 39, 78, 0.12);
+  padding: 1.25rem;
+}
+
+.auth-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.auth-toggle button {
+  border: 1px solid #cfe1ff;
+  background: #f5f9ff;
+  color: #163d68;
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-toggle button.active {
+  background: #1f6feb;
+  color: white;
+  border-color: #1f6feb;
+}
+
+.auth-form {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.auth-form label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.9rem;
+  color: #1f2d3d;
+}
+
+.auth-form input,
+.auth-form select {
+  border: 1px solid #d7e1ee;
+  border-radius: 0.7rem;
+  padding: 0.75rem 0.8rem;
+  font-size: 1rem;
+  background: white;
+}
+
+.auth-error {
+  color: #b42318;
+  margin: 0;
+}
+
+.auth-success {
+  color: #0f7f5f;
+  margin: 0;
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+}
