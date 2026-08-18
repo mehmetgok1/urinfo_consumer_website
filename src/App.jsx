@@ -9,7 +9,7 @@ import {
 import { Button, Heading, View } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { QRCodeSVG } from 'qrcode.react';
-import { Html5QrcodeScanner } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats, Html5QrcodeScanner } from 'html5-qrcode';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 
 const COACH_GROUP = 'coaches';
@@ -92,6 +92,19 @@ function CoachDashboard({ coachSub, accessToken, signOut }) {
   const [linkStatus, setLinkStatus] = useState('');
   const [isLinking, setIsLinking] = useState(false);
   const [patients, setPatients] = useState([]);
+  const [cameraError, setCameraError] = useState('');
+
+  function applyScannedValue(rawText) {
+    const parsedUserId = parseScannedUserId(rawText);
+    if (parsedUserId) {
+      setScannedUserId(parsedUserId);
+      setLinkStatus('QR code scanned. Ready to add patient.');
+      return true;
+    }
+
+    setLinkStatus('Scanned QR code did not contain a valid user id.');
+    return false;
+  }
 
   useEffect(() => {
     if (scannerRef.current) {
@@ -103,23 +116,20 @@ function CoachDashboard({ coachSub, accessToken, signOut }) {
       {
         fps: 10,
         qrbox: { width: 260, height: 260 },
-        rememberLastUsedCamera: true
+        rememberLastUsedCamera: true,
+        showTorchButtonIfSupported: true,
+        disableFlip: false,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
       },
       false
     );
 
     scanner.render(
       (decodedText) => {
-        const parsedUserId = parseScannedUserId(decodedText);
-        if (parsedUserId) {
-          setScannedUserId(parsedUserId);
-          setLinkStatus('QR code scanned. Ready to add patient.');
-        } else {
-          setLinkStatus('Scanned QR code did not contain a valid user id.');
-        }
+        applyScannedValue(decodedText);
       },
-      () => {
-        // Ignore scanner noise.
+      (errorMessage) => {
+        setCameraError(errorMessage || 'Camera is running but no QR detected yet.');
       }
     );
 
@@ -136,6 +146,32 @@ function CoachDashboard({ coachSub, accessToken, signOut }) {
       }
     };
   }, []);
+
+  async function handleImageUpload(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    const html5QrCode = new Html5Qrcode(scannerRegionId);
+    try {
+      const decodedText = await html5QrCode.scanFile(file, true);
+      applyScannedValue(decodedText);
+    } catch (error) {
+      setLinkStatus(`Unable to read QR from uploaded file: ${error.message || 'Unknown error'}`);
+    } finally {
+      event.target.value = '';
+      if (scannerRef.current) {
+        scannerRef.current.resume();
+      }
+    }
+  }
+
+  function handleDemoScan() {
+    const demoUserId = 'demo-patient-user-123';
+    setScannedUserId(demoUserId);
+    setLinkStatus('Demo QR loaded. This simulates a scanned patient id.');
+  }
 
   function handleAddPatient() {
     if (!scannedUserId) {
@@ -219,6 +255,8 @@ function CoachDashboard({ coachSub, accessToken, signOut }) {
 
         <div id={scannerRegionId} className="scanner-box" />
 
+        {cameraError && <p className="status-text error-text">{cameraError}</p>}
+
         <div className="scan-result">
           <p className="id-label">Scanned patient ID</p>
           <p className="id-value">{scannedUserId || 'No patient scanned yet'}</p>
@@ -230,6 +268,16 @@ function CoachDashboard({ coachSub, accessToken, signOut }) {
           </Button>
           <Button variation="default" onClick={handleBindPatient} isLoading={isLinking} isDisabled={!scannedUserId || isLinking}>
             Bind patient
+          </Button>
+        </div>
+
+        <div className="button-row secondary-row">
+          <label className="file-input-label">
+            Upload QR image
+            <input type="file" accept="image/*" onChange={handleImageUpload} />
+          </label>
+          <Button variation="link" onClick={handleDemoScan}>
+            Use demo QR
           </Button>
         </div>
 

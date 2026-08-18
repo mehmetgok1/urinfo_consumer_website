@@ -121,6 +121,31 @@ body {
   word-break: break-word;
 }
 
+.error-text {
+  color: #b42318;
+}
+
+.file-input-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid #cfe1ff;
+  border-radius: 0.7rem;
+  background: #f5f9ff;
+  padding: 0.6rem 0.8rem;
+  cursor: pointer;
+  color: #163d68;
+  font-weight: 600;
+}
+
+.file-input-label input {
+  display: none;
+}
+
+.secondary-row {
+  margin-top: 0.75rem;
+}
+
 .auth-card {
   width: min(100%, 28rem);
   background: rgba(255, 255, 255, 0.96);
