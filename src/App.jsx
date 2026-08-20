@@ -9,7 +9,7 @@ import {
 import { Button, Heading, View } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { QRCodeSVG } from 'qrcode.react';
-import { Html5Qrcode, Html5QrcodeSupportedFormats, Html5QrcodeScanner } from 'html5-qrcode';
+import jsQR from 'jsqr';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate } from 'react-router-dom';
 
 const COACH_GROUP = 'coaches';
@@ -86,13 +86,13 @@ function PatientDashboard({ userSub, signOut }) {
 }
 
 function CoachDashboard({ coachSub, accessToken, signOut }) {
-  const scannerRegionId = 'coach-qr-scanner';
-  const scannerRef = useRef(null);
+  const videoRef = useRef(null);
   const [scannedUserId, setScannedUserId] = useState('');
   const [linkStatus, setLinkStatus] = useState('');
   const [isLinking, setIsLinking] = useState(false);
   const [patients, setPatients] = useState([]);
   const [cameraError, setCameraError] = useState('');
+  const [manualUserId, setManualUserId] = useState('');
 
   function applyScannedValue(rawText) {
     const parsedUserId = parseScannedUserId(rawText);
@@ -107,42 +107,67 @@ function CoachDashboard({ coachSub, accessToken, signOut }) {
   }
 
   useEffect(() => {
-    if (scannerRef.current) {
-      return undefined;
+    let stream = null;
+    let animationFrame = null;
+
+    async function startCamera() {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        setCameraError('Camera access is not supported in this browser.');
+        return;
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment' },
+          audio: false
+        });
+
+        const video = videoRef.current;
+        if (!video) {
+          return;
+        }
+
+        video.srcObject = stream;
+        await video.play();
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+
+        const tick = () => {
+          if (!video.videoWidth || !video.videoHeight) {
+            animationFrame = requestAnimationFrame(tick);
+            return;
+          }
+
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+          const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(imageData.data, imageData.width, imageData.height, {
+            inversionAttempts: 'attemptBothMostLikely'
+          });
+
+          if (code) {
+            applyScannedValue(code.data);
+          }
+
+          animationFrame = requestAnimationFrame(tick);
+        };
+
+        animationFrame = requestAnimationFrame(tick);
+      } catch (error) {
+        setCameraError(`Unable to access camera: ${error.message || 'Permission denied.'}`);
+      }
     }
 
-    const scanner = new Html5QrcodeScanner(
-      scannerRegionId,
-      {
-        fps: 10,
-        qrbox: { width: 260, height: 260 },
-        rememberLastUsedCamera: true,
-        showTorchButtonIfSupported: true,
-        disableFlip: false,
-        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE]
-      },
-      false
-    );
-
-    scanner.render(
-      (decodedText) => {
-        applyScannedValue(decodedText);
-      },
-      (errorMessage) => {
-        setCameraError(errorMessage || 'Camera is running but no QR detected yet.');
-      }
-    );
-
-    scannerRef.current = scanner;
+    startCamera();
 
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current
-          .clear()
-          .catch(() => {})
-          .finally(() => {
-            scannerRef.current = null;
-          });
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+      if (stream) {
+        stream.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -153,18 +178,41 @@ function CoachDashboard({ coachSub, accessToken, signOut }) {
       return;
     }
 
-    const html5QrCode = new Html5Qrcode(scannerRegionId);
     try {
-      const decodedText = await html5QrCode.scanFile(file, true);
-      applyScannedValue(decodedText);
+      const bitmap = await createImageBitmap(file);
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, imageData.width, imageData.height, {
+        inversionAttempts: 'attemptBothMostLikely'
+      });
+
+      if (!code) {
+        setLinkStatus('Unable to read QR from uploaded file: No MultiFormat Readers were able to detect the code.');
+        return;
+      }
+
+      applyScannedValue(code.data);
     } catch (error) {
       setLinkStatus(`Unable to read QR from uploaded file: ${error.message || 'Unknown error'}`);
     } finally {
       event.target.value = '';
-      if (scannerRef.current) {
-        scannerRef.current.resume();
-      }
     }
+  }
+
+  function handleManualUse() {
+    const nextValue = manualUserId.trim();
+    if (!nextValue) {
+      setLinkStatus('Enter a patient ID or QR value first.');
+      return;
+    }
+
+    applyScannedValue(nextValue);
+    setManualUserId('');
   }
 
   function handleDemoScan() {
@@ -253,9 +301,21 @@ function CoachDashboard({ coachSub, accessToken, signOut }) {
           <p className="id-value">{coachSub}</p>
         </div>
 
-        <div id={scannerRegionId} className="scanner-box" />
+        <div className="scanner-shell">
+          <video ref={videoRef} className="camera-video" autoPlay playsInline muted />
+        </div>
 
         {cameraError && <p className="status-text error-text">{cameraError}</p>}
+
+        <div className="manual-entry">
+          <input
+            type="text"
+            value={manualUserId}
+            onChange={(event) => setManualUserId(event.target.value)}
+            placeholder="Paste patient ID or scanned QR text"
+          />
+          <Button variation="default" onClick={handleManualUse}>Use ID manually</Button>
+        </div>
 
         <div className="scan-result">
           <p className="id-label">Scanned patient ID</p>
